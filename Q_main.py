@@ -1,0 +1,188 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
+# In[21]:
+
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_virtual_device_configuration(
+                gpu,
+                [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048)])
+    except RuntimeError as e:
+        print(e)
+
+
+from args_config import args
+import numpy as np
+import time
+import csv
+import os
+from datetime import datetime
+from env import SchedulingEnv
+from Q_model import generate_model_Qlearning, generate_memory, QDQN_test, get_gpu_info
+tf.get_logger().setLevel('ERROR')
+
+from collections import deque, Counter
+
+
+
+# In[22]:
+
+
+env = SchedulingEnv(args)
+gpu_info = get_gpu_info()
+
+def Q_learning_update(states, actions, rewards, next_states, model, model_target, gamma, n_actions, opt_in, opt_var,
+                      opt_out):
+    states = tf.convert_to_tensor(states)
+    actions = tf.convert_to_tensor(actions)
+    rewards = tf.convert_to_tensor(rewards)
+    next_states = tf.convert_to_tensor(next_states)
+
+    # Compute their target q_values and the masks on sampled actions
+    Q_target = model_target([next_states])
+    target_q_values = rewards + (gamma * tf.reduce_max(Q_target, axis=1))
+    masks = tf.one_hot(actions, n_actions)
+
+    with tf.GradientTape() as tape:
+        tape.watch(model.trainable_variables)
+        q_values = model([states])
+        q_values_masked = tf.reduce_sum(tf.multiply(q_values, masks), axis=1)
+        loss = tf.keras.losses.Huber()(target_q_values, q_values_masked)
+
+    # Backpropagation
+    grads = tape.gradient(loss, model.trainable_variables)
+    for optimizer, w in zip([optimizer_in, optimizer_var, optimizer_out], [w_in, w_var, w_out]):
+        optimizer.apply_gradients([(grads[w], model.trainable_variables[w])])
+
+    return loss
+
+
+def update_CP_Type(args, new_CP_Type):
+    """
+    Update CP_Type attribute in Args object.
+
+    Parameters:
+    - args: Args object
+    - new_CP_Type: list, the new CP_Type values
+
+    Returns:
+    - Args object with updated CP_Type
+    """
+    # Create a new Args object with updated CP_Type
+    updated_args = args._replace(CP_Type=new_CP_Type)
+    return updated_args
+
+if __name__ == '__main__':
+    for m in range(80):
+
+        gamma = 0.3964500076639083  # Q-decay
+        CP_T = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+        args = update_CP_Type(args, CP_T)
+
+        layers_num = 5
+        iteration = 7000
+        target_update = 3  # steps for update target-network
+        batch_size = 128
+        # opt_in = 0.000889198958928093
+        # opt_var = 0.014524173723481831
+        # opt_out = 0.528255308322219
+
+        opt_in = 0.002
+        opt_var = 0.02
+        opt_out = 0.1
+
+        optimizer_in = tf.keras.optimizers.Adam(learning_rate=opt_in, amsgrad=True)
+        optimizer_var = tf.keras.optimizers.Adam(learning_rate=opt_var, amsgrad=True)
+        optimizer_out = tf.keras.optimizers.Adam(learning_rate=opt_out, amsgrad=True)
+        w_in, w_var, w_out = 1, 0, 2
+
+        model = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, False)
+        model_target = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, True)  # tf.keras.Model
+        model_target.set_weights(model.get_weights())  # 同样的初始化权重
+
+        new_lamda = 20
+        TrainJobNum = 5000  # 训练样本数
+        TrainArriveRate = new_lamda  # 到达速率lamda
+        TrainJobType = 0.5  # 请求类型
+        replay_memory = generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args)
+
+        TrainJobNum2 = 5000
+        TrainArriveRate2 = new_lamda
+        replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
+
+        for item in replay_memory2:
+            replay_memory.append(item)
+
+        TrainJobNum2 = 5000
+        TrainArriveRate2 = new_lamda
+        replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
+
+        for item in replay_memory2:
+            replay_memory.append(item)
+
+        print(len(replay_memory))
+
+
+
+        TrainStartT = time.time()
+
+        loss_list = []
+
+
+        epoch = 1
+        while True:
+            #print(epoch)
+            training_batch = np.random.choice(replay_memory, size=batch_size)
+            loss = Q_learning_update(np.asarray([x['state'] for x in training_batch]),
+                                     np.asarray([x['action'] for x in training_batch]),
+                                     np.asarray([x['reward'] for x in training_batch], dtype=np.float32),
+                                     np.asarray([x['next_state'] for x in training_batch]),
+                                     model=model, model_target=model_target,
+                                     gamma=gamma,
+                                     n_actions=args.n_actions,
+                                     opt_in=optimizer_in,
+                                     opt_var=optimizer_var,
+                                     opt_out=optimizer_out)
+            # 将张量列表转换为一个张量
+            combined_tensor = tf.stack(loss)
+            # 对张量中的元素进行求和
+            sum_value = tf.reduce_sum(combined_tensor)
+
+            # 将张量的值转换为一个数
+            sum_value_numpy = sum_value.numpy()
+            loss_list.append(sum_value_numpy)
+
+            # Update target model
+            if epoch % target_update == 0:
+                model_target.set_weights(model.get_weights())
+
+            epoch += 1
+            if epoch % 20 == 0:
+                loss_mean = round(np.mean(loss_list[-20:]), 4)
+                loss_var = round(np.var(loss_list[-20:]), 4)
+                print("last[",epoch,"]iterations loss mean:",loss_mean,"var:",loss_var)
+
+
+            if  epoch == iteration:
+                break
+        TrainEndT= time.time()
+        TrainT = TrainEndT - TrainStartT
+
+
+
+
+        TestJobNum = 5000
+        TestArriveRate = 20
+        TestJobType = 0.5
+
+        args = update_CP_Type(args, CP_T)
+        print("TestArriveRate :", TestArriveRate)
+        responseT, successRate, utiRate, cost, profit = QDQN_test(model, env, args, TestJobNum, TestArriveRate, TestJobType)
+
+        TestEndT = time.time()
+
