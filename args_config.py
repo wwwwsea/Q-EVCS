@@ -25,13 +25,7 @@ args = Args(
     epsilon = 0.01 ,
     epsilon_max = 0.9,
     Lr_DDQN=0.001,
-
-    # CP_Type=[0, 1, 1, 1, 1, 1, 1, 1, 1, 1],  #0.1
-    # CP_Type=[0, 0, 0, 1, 1, 1, 1, 1, 1, 1],  # 0.3
-    CP_Type=[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],# 0.5
-    # CP_Type=[0, 0, 0, 0, 0, 0, 0, 1, 1, 1],  # 0.7
-    # CP_Type=[0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # 0.7
-    #
+    CP_Type=[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
     CP_Cost=[1, 1, 4, 4, 6, 1, 1, 4, 4, 6],
     CP_Acc=[1, 1, 1.1, 1.1, 1.2, 1, 1, 1.1, 1.1, 1.2],
     CP_Num=10,
@@ -44,7 +38,7 @@ args = Args(
     Job_ddl=0.25,
 
     n_qubits=11,  # Dimension of the state vectors in cloud task scheduling
-    n_layers=8,  # Number of layers in the PQC
+    n_layers=5,  # Number of layers in the PQC
     n_actions=10,  # Number of virtual machines to which tasks can be assigned
 
     opt_in_rate=0.001,
