@@ -25,7 +25,10 @@ args = Args(
     epsilon = 0.01 ,
     epsilon_max = 0.9,
     Lr_DDQN=0.001,
-    CP_Type=[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+
+
+    CP_Type=[0, 0, 0, 0, 0, 1, 1, 1, 1, 1],# 0.5
+
     CP_Cost=[1, 1, 4, 4, 6, 1, 1, 4, 4, 6],
     CP_Acc=[1, 1, 1.1, 1.1, 1.2, 1, 1, 1.1, 1.1, 1.2],
     CP_Num=10,
@@ -37,16 +40,16 @@ args = Args(
     Job_len_Std=20,
     Job_ddl=0.25,
 
-    n_qubits=11,  # Dimension of the state vectors in cloud task scheduling
-    n_layers=5,  # Number of layers in the PQC
-    n_actions=10,  # Number of virtual machines to which tasks can be assigned
+    n_qubits=11,
+    n_layers=5,
+    n_actions=10,
 
     opt_in_rate=0.001,
     opt_var_rate=0.001,
     opt_out_rate=0.1,
 
     batch_size=32,
-    value_update=1,  # Train the model every x steps
-    target_update=30,  # Update the target model every x steps
-    gamma=0.95  # Q-decay
+    value_update=1,
+    target_update=30,
+    gamma=0.95
 )

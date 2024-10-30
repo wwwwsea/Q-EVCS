@@ -18,7 +18,7 @@ def get_gpu_info():
         return str(e)
 
 
-# 基本酉
+
 def one_qubit_rotation(qubit, symbols):
     """
     Returns Cirq gates that apply a rotation of the bloch sphere about the X,
@@ -28,7 +28,7 @@ def one_qubit_rotation(qubit, symbols):
             cirq.ry(symbols[1])(qubit),
             cirq.rz(symbols[2])(qubit)]
 
-# 量子纠缠CNOT
+
 def entangling_layer(qubits):
     """
     Returns a layer of CZ entangling gates on `qubits`
@@ -38,7 +38,7 @@ def entangling_layer(qubits):
     cz_ops += ([cirq.CZ(qubits[0], qubits[-1])] if len(qubits) != 2 else [])
     return cz_ops
 
-# 生成量子电路
+
 def generate_circuit(qubits, n_layers):
     """Prepares a data re-uploading circuit on `qubits` with `n_layers` layers."""
     # Number of qubits
@@ -66,7 +66,7 @@ def generate_circuit(qubits, n_layers):
 
     return circuit, list(params.flat), list(inputs.flat)
 
-# 重上传电路
+
 class ReUploadingPQC(tf.keras.layers.Layer):
     """
     Performs the transformation (s_1, ..., s_d) -> (theta_1, ..., theta_N, lmbd[1][1]s_1, ..., lmbd[1][M]s_1,
@@ -125,7 +125,7 @@ class ReUploadingPQC(tf.keras.layers.Layer):
         })
         return config
 
-# 可训练缩放权重
+
 class Rescaling(tf.keras.layers.Layer):
     def __init__(self, input_dim):
         super(Rescaling, self).__init__()
@@ -137,17 +137,9 @@ class Rescaling(tf.keras.layers.Layer):
     def call(self, inputs):
         return tf.math.multiply((inputs + 1) / 2, tf.repeat(self.w, repeats=tf.shape(inputs)[0], axis=0))
 
-"""
-n_qubits 环境中状态向量的维度。
-n_layers 参数化量子电路（PQC）中的层数。
-n_actions  环境中可用的动作数量。
-"""
-# 量子模型
+
 def generate_model_Qlearning(n_qubits, n_layers, n_actions, target):
-    """
-    Generates a Keras model for a data re-uploading PQC Q-function approximator.
-    作为Q值近似器
-    """
+
 
     qubits = cirq.GridQubit.rect(1, n_qubits)
     ops = [cirq.Z(q) for q in qubits]
@@ -157,7 +149,7 @@ def generate_model_Qlearning(n_qubits, n_layers, n_actions, target):
     input_tensor = tf.keras.Input(shape=(len(qubits),), dtype=tf.dtypes.float32, name='input')
     re_uploading_pqc = ReUploadingPQC(qubits, n_layers, observables, activation='tanh')([input_tensor])
     process = tf.keras.Sequential([Rescaling(len(observables))], name=target * "Target" + "Q-values")
-    # 这里的Rescaling返回的对象是一个层而非张量
+
     Q_values = process(re_uploading_pqc)
     model = tf.keras.Model(inputs=[input_tensor], outputs=Q_values)
     return model
@@ -220,9 +212,9 @@ def generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args):
                                   'action': last_action,
                                   'next_state': QDQN_state,
                                   'reward': float(last_reward)})
-        # 随机选择一个动作作为当前动作
+
         action_QDQN = np.random.choice(args.n_actions)
-        # 计算当前动作对应的奖励
+
         reward_QDQN = env.feedback(job_attrs, action_QDQN, 5)
         # st,at,rt
         last_state = QDQN_state
@@ -239,24 +231,24 @@ def generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args):
 
 
 def QDQN_test(model, env, args, job_num, lamda, job_type):
-    # 用于记录每个测试 episode 的累计奖励
+
     episode_reward_history = []
-    #  用于记录每个时间步所选择的动作
+
     action_list = []
-    # 记录整个测试过程的总奖励。
+
     total_reward = 0
     print("*******************testing*******************")
     job_c = 1
-    #  重置环境，设置测试的作业数量、到达率、作业类型。
+
     env.reset(args, job_num, lamda, job_type)
     while True:
-        #获取当前作业的属性，包括是否完成和其他信息。
+
         finish, job_attrs = env.workload(job_c)
-        # 根据当前作业属性获取 Q-learning 模型的状态。
+
         QDQN_state = env.getState(job_attrs, 5)
-        # 获取 Q-values。
+
         q_vals = model([tf.convert_to_tensor([QDQN_state])])
-        # 选择 Q-values 最大的动作。
+
         action_QDQN = int(tf.argmax(q_vals[0]).numpy())
 
         reward_QDQN = env.feedback(job_attrs, action_QDQN, 5)
@@ -270,7 +262,7 @@ def QDQN_test(model, env, args, job_num, lamda, job_type):
         if job_c % 500 == 0:
             print(job_c)
         if finish:
-            # print(action_list)
+
             total_success = env.get_totalSuccess(args.Baseline_num, 1)
             avg_allRespTs = env.get_total_responseTs(args.Baseline_num, 1)
             avg_util = env.get_avgUtilitizationRate(args.Baseline_num, 1)
@@ -281,31 +273,6 @@ def QDQN_test(model, env, args, job_num, lamda, job_type):
             print('utilizationRate:', avg_util[4])
             print('cost:', total_cost[4])
             print('profit:', total_profit[4])
-            # frequency_counter = Counter(action_list)
 
-            # # 准备数据
-            # labels = list(range(10))
-            # counts = [frequency_counter.get(i, 0) for i in labels]
-            #
-            # # 绘图
-            # plt.figure(figsize=(10, 6))
-            # plt.bar(labels, counts, color='blue', alpha=0.7, label='Frequency')
-            # plt.xlabel('Charger ID')
-            # plt.ylabel('Dispatch Frequency')
-            # plt.title('Dispatch Frequency of Charging Station')
-            # plt.xticks(labels)
-            #
-            # #plt.yticks(range(max(counts) + 1))
-            # max_value = max(counts)
-            # number_of_ticks = 10  # 希望的刻度数量
-            # interval = max(1, int(max_value / number_of_ticks))  # 计算间隔，至少为1
-            # plt.yticks(range(0, max_value + 1, interval))
-            #
-            # plt.legend()
-            # plt.show()
-
-
-
-            # 返回平均响应时间、成功率、利用率、成本。
             return avg_allRespTs[4], total_success[4], avg_util[4], total_cost[4],total_profit[4]
 

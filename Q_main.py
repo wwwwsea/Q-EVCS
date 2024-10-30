@@ -62,27 +62,11 @@ def Q_learning_update(states, actions, rewards, next_states, model, model_target
     return loss
 
 
-def update_CP_Type(args, new_CP_Type):
-    """
-    Update CP_Type attribute in Args object.
-
-    Parameters:
-    - args: Args object
-    - new_CP_Type: list, the new CP_Type values
-
-    Returns:
-    - Args object with updated CP_Type
-    """
-    # Create a new Args object with updated CP_Type
-    updated_args = args._replace(CP_Type=new_CP_Type)
-    return updated_args
 
 if __name__ == '__main__':
     for m in range(80):
 
-        gamma = 0.3964500076639083  # Q-decay
-        CP_T = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
-        args = update_CP_Type(args, CP_T)
+        gamma = 0.5  # Q-decay
 
         layers_num = 5
         iteration = 7000
@@ -106,9 +90,9 @@ if __name__ == '__main__':
         model_target.set_weights(model.get_weights())  # 同样的初始化权重
 
         new_lamda = 20
-        TrainJobNum = 5000  # 训练样本数
-        TrainArriveRate = new_lamda  # 到达速率lamda
-        TrainJobType = 0.5  # 请求类型
+        TrainJobNum = 5000
+        TrainArriveRate = new_lamda
+        TrainJobType = 0.5
         replay_memory = generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args)
 
         TrainJobNum2 = 5000
@@ -127,10 +111,6 @@ if __name__ == '__main__':
 
         print(len(replay_memory))
 
-
-
-        TrainStartT = time.time()
-
         loss_list = []
 
 
@@ -148,12 +128,12 @@ if __name__ == '__main__':
                                      opt_in=optimizer_in,
                                      opt_var=optimizer_var,
                                      opt_out=optimizer_out)
-            # 将张量列表转换为一个张量
+
             combined_tensor = tf.stack(loss)
-            # 对张量中的元素进行求和
+
             sum_value = tf.reduce_sum(combined_tensor)
 
-            # 将张量的值转换为一个数
+
             sum_value_numpy = sum_value.numpy()
             loss_list.append(sum_value_numpy)
 
@@ -170,19 +150,12 @@ if __name__ == '__main__':
 
             if  epoch == iteration:
                 break
-        TrainEndT= time.time()
-        TrainT = TrainEndT - TrainStartT
-
-
-
 
         TestJobNum = 5000
         TestArriveRate = 20
         TestJobType = 0.5
-
-        args = update_CP_Type(args, CP_T)
         print("TestArriveRate :", TestArriveRate)
         responseT, successRate, utiRate, cost, profit = QDQN_test(model, env, args, TestJobNum, TestArriveRate, TestJobType)
 
-        TestEndT = time.time()
+
 
