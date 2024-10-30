@@ -15,7 +15,7 @@ Directly run the Q_main.py, the approach will run with the default settings.
 
 # Code Structure
 
-- `args_config.py` : function for building agents.
-- `Q_model.py` : function for building buffer, where some trained data would be saved.
-- `env.py` : codes for creating a multi-agent hybrid cloud environment with VMs.
+- `args_config.py` : configuration file defining default arguments and hyperparameters.
+- `Q_model.py` : functions to generate the Q-EVCS model, manage memory for experience replay, and perform Q-EVCS testing.
+- `env.py` : defines the EV charging scheduling environment.
 - `Q_main.py` : main function.
