@@ -64,98 +64,97 @@ def Q_learning_update(states, actions, rewards, next_states, model, model_target
 
 
 if __name__ == '__main__':
-    for m in range(80):
-
-        gamma = 0.5  # Q-decay
-
-        layers_num = 5
-        iteration = 7000
-        target_update = 3  # steps for update target-network
-        batch_size = 128
-        # opt_in = 0.000889198958928093
-        # opt_var = 0.014524173723481831
-        # opt_out = 0.528255308322219
-
-        opt_in = 0.002
-        opt_var = 0.02
-        opt_out = 0.1
-
-        optimizer_in = tf.keras.optimizers.Adam(learning_rate=opt_in, amsgrad=True)
-        optimizer_var = tf.keras.optimizers.Adam(learning_rate=opt_var, amsgrad=True)
-        optimizer_out = tf.keras.optimizers.Adam(learning_rate=opt_out, amsgrad=True)
-        w_in, w_var, w_out = 1, 0, 2
-
-        model = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, False)
-        model_target = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, True)  # tf.keras.Model
-        model_target.set_weights(model.get_weights())  # 同样的初始化权重
-
-        new_lamda = 20
-        TrainJobNum = 5000
-        TrainArriveRate = new_lamda
-        TrainJobType = 0.5
-        replay_memory = generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args)
-
-        TrainJobNum2 = 5000
-        TrainArriveRate2 = new_lamda
-        replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
-
-        for item in replay_memory2:
-            replay_memory.append(item)
-
-        TrainJobNum2 = 5000
-        TrainArriveRate2 = new_lamda
-        replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
-
-        for item in replay_memory2:
-            replay_memory.append(item)
-
-        print(len(replay_memory))
-
-        loss_list = []
 
 
-        epoch = 1
-        while True:
-            #print(epoch)
-            training_batch = np.random.choice(replay_memory, size=batch_size)
-            loss = Q_learning_update(np.asarray([x['state'] for x in training_batch]),
-                                     np.asarray([x['action'] for x in training_batch]),
-                                     np.asarray([x['reward'] for x in training_batch], dtype=np.float32),
-                                     np.asarray([x['next_state'] for x in training_batch]),
-                                     model=model, model_target=model_target,
-                                     gamma=gamma,
-                                     n_actions=args.n_actions,
-                                     opt_in=optimizer_in,
-                                     opt_var=optimizer_var,
-                                     opt_out=optimizer_out)
+    gamma = 0.5  # Q-decay
 
-            combined_tensor = tf.stack(loss)
+    layers_num = 5
+    iteration = 7000
+    target_update = 3  # steps for update target-network
+    batch_size = 128
+    
 
-            sum_value = tf.reduce_sum(combined_tensor)
+    opt_in = 0.002
+    opt_var = 0.02
+    opt_out = 0.1
+
+    optimizer_in = tf.keras.optimizers.Adam(learning_rate=opt_in, amsgrad=True)
+    optimizer_var = tf.keras.optimizers.Adam(learning_rate=opt_var, amsgrad=True)
+    optimizer_out = tf.keras.optimizers.Adam(learning_rate=opt_out, amsgrad=True)
+    w_in, w_var, w_out = 1, 0, 2
+
+    model = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, False)
+    model_target = generate_model_Qlearning(args.n_qubits, layers_num, args.n_actions, True)  # tf.keras.Model
+    model_target.set_weights(model.get_weights())  # 同样的初始化权重
+
+    new_lamda = 20
+    TrainJobNum = 5000
+    TrainArriveRate = new_lamda
+    TrainJobType = 0.5
+    replay_memory = generate_memory(env, TrainJobNum, TrainArriveRate, TrainJobType, args)
+
+    TrainJobNum2 = 5000
+    TrainArriveRate2 = new_lamda
+    replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
+
+    for item in replay_memory2:
+        replay_memory.append(item)
+
+    TrainJobNum2 = 5000
+    TrainArriveRate2 = new_lamda
+    replay_memory2 = generate_memory(env, TrainJobNum2, TrainArriveRate2, TrainJobType, args)
+
+    for item in replay_memory2:
+        replay_memory.append(item)
+
+    print(len(replay_memory))
+
+    loss_list = []
 
 
-            sum_value_numpy = sum_value.numpy()
-            loss_list.append(sum_value_numpy)
+    epoch = 1
+    while True:
+        #print(epoch)
+        training_batch = np.random.choice(replay_memory, size=batch_size)
+        loss = Q_learning_update(np.asarray([x['state'] for x in training_batch]),
+                                 np.asarray([x['action'] for x in training_batch]),
+                                 np.asarray([x['reward'] for x in training_batch], dtype=np.float32),
+                                 np.asarray([x['next_state'] for x in training_batch]),
+                                 model=model, model_target=model_target,
+                                 gamma=gamma,
+                                 n_actions=args.n_actions,
+                                 opt_in=optimizer_in,
+                                 opt_var=optimizer_var,
+                                 opt_out=optimizer_out)
 
-            # Update target model
-            if epoch % target_update == 0:
-                model_target.set_weights(model.get_weights())
+        combined_tensor = tf.stack(loss)
 
-            epoch += 1
-            if epoch % 20 == 0:
-                loss_mean = round(np.mean(loss_list[-20:]), 4)
-                loss_var = round(np.var(loss_list[-20:]), 4)
-                print("last[",epoch,"]iterations loss mean:",loss_mean,"var:",loss_var)
+        sum_value = tf.reduce_sum(combined_tensor)
 
 
-            if  epoch == iteration:
-                break
+        sum_value_numpy = sum_value.numpy()
+        loss_list.append(sum_value_numpy)
 
-        TestJobNum = 5000
-        TestArriveRate = 20
-        TestJobType = 0.5
-        print("TestArriveRate :", TestArriveRate)
-        responseT, successRate, utiRate, cost, profit = QDQN_test(model, env, args, TestJobNum, TestArriveRate, TestJobType)
+        # Update target model
+        if epoch % target_update == 0:
+            model_target.set_weights(model.get_weights())
+
+        epoch += 1
+        if epoch % 20 == 0:
+            loss_mean = round(np.mean(loss_list[-20:]), 4)
+            loss_var = round(np.var(loss_list[-20:]), 4)
+            print("last[",epoch,"]iterations loss mean:",loss_mean,"var:",loss_var)
+
+
+        if  epoch == iteration:
+            break
+
+    TestJobNum = 5000
+    TestArriveRate = 20
+    TestJobType = 0.5
+    print("TestArriveRate :", TestArriveRate)
+    responseT, successRate, utiRate, cost, profit = QDQN_test(model, env, args, TestJobNum, TestArriveRate, TestJobType)
+
 
 
 
